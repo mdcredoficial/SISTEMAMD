@@ -1165,7 +1165,7 @@ def protect_root():
         db.session.commit()
         _HOSTED_PASSWORDS_CHECKED = True
 
-    public_routes = {'login', 'register', 'static', 'uploaded_file'}
+    public_routes = {'login', 'register', 'static', 'uploaded_file', 'desktop_installer'}
     if request.endpoint in public_routes or request.endpoint is None:
         return
     if not current_user.is_authenticated:
