@@ -1,0 +1,251 @@
+{% set snap = loan_snapshot(loan) %}
+{% set suggested_daily_amount = snap.installment_amount + (snap.fine if snap.days_overdue else 0) %}
+{% set suggested_weekly_amount = snap.installment_amount + (snap.fine if snap.days_overdue else 0) %}
+{% set modal_due_date = snap.next_due_date or loan.due_date %}
+{% macro loan_modal_details(snap, loan, mode='default') -%}
+<div class="alert alert-light border rounded-3 small mb-3">
+  <div><strong>Status:</strong> {{ snap.status_label }}</div>
+  {% if modal_due_date %}<div><strong>Vencimento:</strong> {{ fmt_date(modal_due_date) }}</div>{% endif %}
+  {% if snap.days_overdue and snap.days_overdue > 0 %}
+    {% if loan.loan_type == 'semanal' and snap.overdue_detail_lines and snap.overdue_detail_lines|length > 0 %}
+      <div><strong>{{ snap.overdue_detail_lines|length }} parcela(s) em atraso</strong></div>
+      {% for item in snap.overdue_detail_lines %}
+      <div>{{ item.number }}ª ({{ fmt_date(item.due_date) }}) → {{ item.fine_count }} multa(s) ({{ fmt_money(item.fine_amount) }})</div>
+      {% endfor %}
+      <div><strong>Total em multas:</strong> {{ fmt_money(snap.fine) }}</div>
+    {% else %}
+      <div><strong>Atrasado há {{ snap.days_overdue }} dia(s)</strong></div>
+      <div><strong>{{ snap.fine_count }} multa(s) acumulada(s):</strong> {{ fmt_money(snap.fine) }}</div>
+    {% endif %}
+  {% endif %}
+  {% if snap.overdue_installments and snap.overdue_installments > 0 %}<div><strong>Parcelas vencidas:</strong> {{ snap.overdue_installments }}</div>{% endif %}
+  {% if mode == 'juros' %}
+  <div><strong>Juros dos ciclos:</strong> {{ fmt_money((snap.interest_amount or 0) * (snap.overdue_installments or 1)) }}</div>
+  <div><strong>Total de Juros e Multa:</strong> {{ fmt_money(((snap.interest_amount or 0) * (snap.overdue_installments or 1)) + (snap.fine or 0)) }}</div>
+  {% elif mode == 'quitacao' %}
+  <div><strong>Valor de quitação:</strong> {{ fmt_money(snap.settlement_amount) }}</div>
+  {% elif mode == 'multi' %}
+  <div><strong>Parcela base:</strong> {{ fmt_money(snap.installment_amount) }}</div>
+  {% else %}
+  <div><strong>Parcela base:</strong> {{ fmt_money(snap.installment_amount) }}</div>
+  {% endif %}
+</div>
+{%- endmacro %}
+<div class="loan-actions-grid mt-3">
+  <a class="btn btn-success btn-action btn-sm" target="_blank" href="{{ loan.client.whatsapp_link(render_charge_message(current_user.charge_message_template, loan.client, loan, snap)) }}"><i class="bi bi-whatsapp"></i> Cobrar</a>
+
+  {% if loan.loan_type == 'diario' %}
+  <button class="btn btn-primary btn-action btn-sm doc-action-btn" data-bs-toggle="modal" data-bs-target="#parcelaDiaria{{ loan.id }}">Receber parcela diária</button>
+  <button class="btn btn-info btn-action btn-sm doc-action-btn" data-bs-toggle="modal" data-bs-target="#parcelasMultiplasDiario{{ loan.id }}">Receber múltiplas parcelas</button>
+  {% elif loan.loan_type == 'semanal' %}
+  <button class="btn btn-primary btn-action btn-sm doc-action-btn" data-bs-toggle="modal" {% if snap.days_overdue > 0 %}disabled{% endif %} data-bs-target="#parcelaSemanal{{ loan.id }}">Receber parcela semanal</button>
+  <button class="btn btn-info btn-action btn-sm doc-action-btn" data-bs-toggle="modal" {% if snap.days_overdue > 0 %}disabled{% endif %} data-bs-target="#parcelasMultiplasSemanal{{ loan.id }}">Receber múltiplas parcelas</button>
+  {% else %}
+  <button class="btn btn-primary btn-action btn-sm doc-action-btn" data-bs-toggle="modal" data-bs-target="#jurosRenovar{{ loan.id }}">Pagar só juros e renovar</button>
+  {% endif %}
+
+  <button class="btn btn-purple btn-action btn-sm" data-bs-toggle="modal" data-bs-target="#negQuit{{ loan.id }}">Negociar Quitação</button>
+  <button class="btn btn-orange btn-action btn-sm" data-bs-toggle="modal" data-bs-target="#negJuros{{ loan.id }}">Negociar Juros</button>
+
+  <button class="btn btn-danger btn-action btn-sm w-100 doc-action-btn" data-bs-toggle="modal" data-bs-target="#quitacaoModal{{ loan.id }}">Quitar</button>
+</div>
+
+
+{% if loan.loan_type == 'diario' %}
+<div class="modal fade" id="parcelaDiaria{{ loan.id }}" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content md-modal">
+      <form method="post" action="{{ url_for('loan_action', loan_id=loan.id, action='parcela_diaria') }}"><input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+        <div class="modal-header border-0 pb-0">
+          <h5 class="modal-title">Receber parcela diária</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" name="next" value="{{ request.url }}">
+          {{ loan_modal_details(snap, loan) }}
+          <label class="form-label">Valor da parcela diária</label>
+          <input type="number" step="0.01" min="0" name="parcel_amount" class="form-control" value="{{ '%.2f'|format(suggested_daily_amount) }}" required>
+          <div class="small text-muted mt-2">Base diária: {{ fmt_money(snap.installment_amount) }}{% if snap.fine and snap.fine > 0 %} • multa atual: {{ fmt_money(snap.fine) }}{% endif %}</div>
+        </div>
+        <div class="modal-footer border-0">
+          <button type="button" class="btn btn-gray btn-action" data-bs-dismiss="modal">Cancelar</button>
+          <button class="btn btn-success btn-action">Registrar pagamento</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% elif loan.loan_type == 'semanal' %}
+<div class="modal fade" id="parcelaSemanal{{ loan.id }}" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content md-modal">
+      <form method="post" action="{{ url_for('loan_action', loan_id=loan.id, action='parcela_semanal') }}"><input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+        <div class="modal-header border-0 pb-0">
+          <h5 class="modal-title">Receber parcela semanal</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" name="next" value="{{ request.url }}">
+          {{ loan_modal_details(snap, loan) }}
+          <label class="form-label">Valor da parcela semanal</label>
+          <input type="number" step="0.01" min="0" name="parcel_amount" class="form-control" value="{{ '%.2f'|format(suggested_weekly_amount) }}" required>
+          <div class="small text-muted mt-2">Base semanal: {{ fmt_money(snap.installment_amount) }}{% if snap.fine and snap.fine > 0 %} • multa atual: {{ fmt_money(snap.fine) }}{% endif %}</div>
+        </div>
+        <div class="modal-footer border-0">
+          <button type="button" class="btn btn-gray btn-action" data-bs-dismiss="modal">Cancelar</button>
+          <button class="btn btn-success btn-action">Registrar pagamento</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if loan.loan_type == 'diario' %}
+<div class="modal fade" id="parcelasMultiplasDiario{{ loan.id }}" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content md-modal">
+      <form method="post" action="{{ url_for('loan_action', loan_id=loan.id, action='parcelas_multiplas_diario') }}"><input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+        <div class="modal-header border-0 pb-0">
+          <h5 class="modal-title">Receber múltiplas parcelas diárias</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" name="next" value="{{ request.url }}">
+          {{ loan_modal_details(snap, loan, 'multi') }}
+          <label class="form-label">Quantidade de parcelas</label>
+          <input type="number" min="2" name="installments_quantity" class="form-control" value="2" required>
+          <div class="small text-muted mt-2">O sistema calcula automaticamente as parcelas pendentes mais antigas e as multas do diário a cada 2 dias de atraso.</div>
+        </div>
+        <div class="modal-footer border-0">
+          <button type="button" class="btn btn-gray btn-action" data-bs-dismiss="modal">Cancelar</button>
+          <button class="btn btn-success btn-action">Registrar pagamento</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% elif loan.loan_type == 'semanal' %}
+<div class="modal fade" id="parcelasMultiplasSemanal{{ loan.id }}" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content md-modal">
+      <form method="post" action="{{ url_for('loan_action', loan_id=loan.id, action='parcelas_multiplas_semanal') }}"><input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+        <div class="modal-header border-0 pb-0">
+          <h5 class="modal-title">Receber múltiplas parcelas semanais</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" name="next" value="{{ request.url }}">
+          {{ loan_modal_details(snap, loan, 'multi') }}
+          <label class="form-label">Quantidade de parcelas</label>
+          <input type="number" min="2" name="installments_quantity" class="form-control" value="2" required>
+          <div class="small text-muted mt-2">O sistema calcula automaticamente as parcelas pendentes mais antigas e a multa diária do semanal.</div>
+        </div>
+        <div class="modal-footer border-0">
+          <button type="button" class="btn btn-gray btn-action" data-bs-dismiss="modal">Cancelar</button>
+          <button class="btn btn-success btn-action">Registrar pagamento</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+
+{% if loan.loan_type == 'mensal' %}
+<div class="modal fade" id="jurosRenovar{{ loan.id }}" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content md-modal">
+      <form method="post" action="{{ url_for('loan_action', loan_id=loan.id, action='juros_renovar') }}"><input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+        <div class="modal-header border-0 pb-0">
+          <h5 class="modal-title">Pagar só juros e renovar</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" name="next" value="{{ request.url }}">
+          {{ loan_modal_details(snap, loan, 'juros') }}
+          <label class="form-label">Data do pagamento</label>
+          <input type="date" name="payment_date" class="form-control" value="{{ today().isoformat() }}" required>
+          <label class="form-label mt-3">Observação</label>
+          <textarea name="observation" class="form-control" rows="3" placeholder="Opcional"></textarea>
+        </div>
+        <div class="modal-footer border-0">
+          <button type="button" class="btn btn-gray btn-action" data-bs-dismiss="modal">Cancelar</button>
+          <button class="btn btn-success btn-action">Registrar pagamento</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<div class="modal fade" id="quitacaoModal{{ loan.id }}" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content md-modal">
+      <form method="post" action="{{ url_for('loan_action', loan_id=loan.id, action='quitacao') }}"><input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+        <div class="modal-header border-0 pb-0">
+          <h5 class="modal-title">Quitar contrato</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" name="next" value="{{ request.url }}">
+          {{ loan_modal_details(snap, loan, 'quitacao') }}
+          <label class="form-label">Data do pagamento</label>
+          <input type="date" name="payment_date" class="form-control" value="{{ today().isoformat() }}" required>
+          <label class="form-label mt-3">Observação</label>
+          <textarea name="observation" class="form-control" rows="3" placeholder="Opcional"></textarea>
+        </div>
+        <div class="modal-footer border-0">
+          <button type="button" class="btn btn-gray btn-action" data-bs-dismiss="modal">Cancelar</button>
+          <button class="btn btn-success btn-action">Registrar quitação</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="negJuros{{ loan.id }}" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content md-modal">
+      <form method="post" action="{{ url_for('loan_action', loan_id=loan.id, action='negociar_juros') }}"><input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+        <div class="modal-header border-0 pb-0">
+          <h5 class="modal-title">Negociar Juros</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" name="next" value="{{ request.url }}">
+          {{ loan_modal_details(snap, loan, 'juros') }}
+          <label class="form-label">Valor negociado</label>
+          <input type="number" step="0.01" min="0" name="negotiated_amount" class="form-control" required>
+        </div>
+        <div class="modal-footer border-0">
+          <button type="button" class="btn btn-gray btn-action" data-bs-dismiss="modal">Cancelar</button>
+          <button class="btn btn-success btn-action">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="negQuit{{ loan.id }}" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content md-modal">
+      <form method="post" action="{{ url_for('loan_action', loan_id=loan.id, action='negociar_quitacao') }}"><input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+        <div class="modal-header border-0 pb-0">
+          <h5 class="modal-title">Negociar Quitação</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" name="next" value="{{ request.url }}">
+          {{ loan_modal_details(snap, loan, 'quitacao') }}
+          <label class="form-label">Valor negociado</label>
+          <input type="number" step="0.01" min="0" name="negotiated_amount" class="form-control" required>
+        </div>
+        <div class="modal-footer border-0">
+          <button type="button" class="btn btn-gray btn-action" data-bs-dismiss="modal">Cancelar</button>
+          <button class="btn btn-success btn-action">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

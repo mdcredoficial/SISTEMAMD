@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+{% block page_title %}{{ 'Editar cliente' if client else 'Novo cliente' }}{% endblock %}
+{% block content %}
+<form method="post" enctype="multipart/form-data" class="panel-card client-form js-risk-client-form" novalidate><input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="risk_confirmed" value="0">
+  <div class="section-title">Dados principais</div>
+  <div class="row g-3 mb-4">
+    <div class="col-lg-6"><label class="form-label">Nome completo</label><input class="form-control" name="full_name" value="{{ form_value(form_data, client, 'full_name') }}" required></div>
+    <div class="col-lg-3"><label class="form-label">CPF</label><input class="form-control js-cpf" name="cpf" value="{{ form_value(form_data, client, 'cpf') }}" maxlength="14" required></div>
+    <div class="col-lg-3"><label class="form-label">CEP</label><input class="form-control js-cep" name="cep" value="{{ form_value(form_data, client, 'cep') }}" maxlength="9" required></div>
+    <div class="col-lg-5"><label class="form-label">Rua</label><input class="form-control" name="street" value="{{ form_value(form_data, client, 'street') }}" required></div>
+    <div class="col-lg-2"><label class="form-label">Número</label><input class="form-control" name="street_number" value="{{ form_value(form_data, client, 'street_number') }}" required></div>
+    <div class="col-lg-2"><label class="form-label">Bairro</label><input class="form-control" name="neighborhood" value="{{ form_value(form_data, client, 'neighborhood') }}" required></div>
+    <div class="col-lg-3"><label class="form-label">Cidade</label><input class="form-control" name="city" value="{{ form_value(form_data, client, 'city') }}" required></div>
+  </div>
+
+  <div class="section-title">Contato</div>
+  <div class="row g-3 mb-4">
+    <div class="col-lg-4"><label class="form-label">WhatsApp</label><input class="form-control js-phone js-whatsapp" name="whatsapp" class="js-whatsapp-mask" value="{{ form_value(form_data, client, 'whatsapp') }}" maxlength="20" required></div>
+    <div class="col-lg-4"><label class="form-label">Telefone</label><input class="form-control js-phone" name="phone" value="{{ form_value(form_data, client, 'phone') }}" maxlength="15"></div>
+    <div class="col-lg-4"><label class="form-label">E-mail</label><input class="form-control" name="email" value="{{ form_value(form_data, client, 'email') }}"></div>
+  </div>
+
+  <div class="section-title">Contato familiar</div>
+  <div class="row g-3 mb-4">
+    <div class="col-lg-4"><label class="form-label">Nome do parente</label><input class="form-control" name="contact_name" value="{{ form_value(form_data, client, 'contact_name') }}"></div>
+    <div class="col-lg-4"><label class="form-label">Parentesco</label><input class="form-control" name="relationship" value="{{ form_value(form_data, client, 'relationship') }}"></div>
+    <div class="col-lg-4"><label class="form-label">Contato do parente</label><input class="form-control js-phone" name="kin_phone" value="{{ form_value(form_data, client, 'kin_phone') }}" maxlength="15"></div>
+    <div class="col-lg-4"><label class="form-label">Rua familiar</label><input class="form-control" name="family_street" value="{{ form_value(form_data, client, 'family_street') }}"></div>
+    <div class="col-lg-2"><label class="form-label">Número</label><input class="form-control" name="family_number" value="{{ form_value(form_data, client, 'family_number') }}"></div>
+    <div class="col-lg-2"><label class="form-label">Bairro</label><input class="form-control" name="family_neighborhood" value="{{ form_value(form_data, client, 'family_neighborhood') }}"></div>
+    <div class="col-lg-2"><label class="form-label">Cidade</label><input class="form-control" name="family_city" value="{{ form_value(form_data, client, 'family_city') }}"></div>
+    <div class="col-lg-2"><label class="form-label">CEP</label><input class="form-control js-cep" name="family_cep" value="{{ form_value(form_data, client, 'family_cep') }}" maxlength="9"></div>
+    <div class="col-lg-4"><label class="form-label">Casa própria ou aluguel</label>
+      <select class="form-select" name="house_status">
+        <option value="">Selecione</option>
+        <option value="Própria" {% if form_value(form_data, client, 'house_status') == 'Própria' %}selected{% endif %}>Própria</option>
+        <option value="Aluguel" {% if form_value(form_data, client, 'house_status') == 'Aluguel' %}selected{% endif %}>Aluguel</option>
+      </select>
+    </div>
+    <div class="col-lg-4"><label class="form-label">Facebook</label><input class="form-control" name="facebook" value="{{ form_value(form_data, client, 'facebook') }}"></div>
+    <div class="col-lg-4"><label class="form-label">Instagram</label><input class="form-control" name="instagram" value="{{ form_value(form_data, client, 'instagram') }}"></div>
+  </div>
+
+  <div class="section-title">Documentos e anexos</div>
+  <div class="row g-3">
+    {% for field, label in document_fields.items() %}
+      <div class="col-lg-6">
+        <label class="form-label">{{ label }}</label>
+        <input type="file" class="form-control" name="{{ field }}" accept="image/*,.pdf">
+        {% if client and getattr(client, field) %}
+          <div class="document-inline-card mt-2">
+            <div>
+              <div class="small text-muted">Arquivo atual</div>
+              <strong class="small d-block">{{ getattr(client, field) }}</strong>
+            </div>
+            <div class="form-check m-0">
+              <input class="form-check-input" type="checkbox" value="1" id="remove_{{ field }}" name="remove_{{ field }}">
+              <label class="form-check-label small" for="remove_{{ field }}">Remover arquivo</label>
+            </div>
+          </div>
+        {% endif %}
+      </div>
+    {% endfor %}
+  </div>
+  <div class="mt-4 d-flex gap-2 flex-wrap"><button class="btn btn-primary doc-action-btn">Salvar cliente</button><a class="btn btn-gray" href="{{ url_for('clients_list') }}">Cancelar</a></div>
+</form>
+{% endblock %}

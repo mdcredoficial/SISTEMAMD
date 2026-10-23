@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+{% block page_title %}Clientes{% endblock %}
+{% block content %}
+<div class="panel-card">
+  <div class="panel-head flex-wrap gap-3">
+    <form class="search-bar" method="get">
+      <i class="bi bi-search"></i>
+      <input class="form-control border-0 shadow-none" name="q" value="{{ search }}" placeholder="Buscar por nome, CPF ou telefone">
+      <button class="btn btn-primary doc-action-btn">Buscar</button>
+    </form>
+    <a class="btn btn-primary doc-action-btn" href="{{ url_for('client_new') }}">Novo cliente</a>
+  </div>
+
+  <div class="table-responsive d-none d-md-block">
+    <table class="table md-table align-middle mb-0">
+      <thead><tr><th>Nome</th><th>CPF</th><th>WhatsApp</th><th>Bairro</th><th class="text-end">Ações</th></tr></thead>
+      <tbody>
+      {% for client in clients %}
+        <tr>
+          <td>{% set score = client_score(client) %}<div class="d-flex align-items-center gap-2 flex-wrap"><strong>{{ client.full_name }}</strong><span class="score-pill {{ score.css_class }} score-inline" data-bs-toggle="tooltip" data-bs-placement="top" title="Score {{ score.value }} de 100 · {{ score.label }}">{{ score.value }} · {{ score.label }}</span></div></td>
+          <td>{{ client.cpf }}</td>
+          <td>{{ client.whatsapp }}</td>
+          <td>{{ client.neighborhood }}</td>
+          <td>
+            <div class="d-flex gap-2 flex-wrap justify-content-end">
+              <a class="btn btn-sm btn-primary doc-action-btn" href="{{ url_for('client_detail', client_id=client.id) }}">Ficha</a>
+              <a class="btn btn-sm btn-gray" href="{{ url_for('client_edit', client_id=client.id) }}">Editar</a>
+              {% if current_user.role=='admin' %}
+              <form method="post" action="{{ url_for('client_delete', client_id=client.id) }}" onsubmit="return confirm('Excluir cliente?')"><input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                <button class="btn btn-sm btn-danger doc-action-btn">Excluir</button>
+              </form>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+      {% else %}
+        <tr><td colspan="5" class="text-muted">Nenhum cliente encontrado.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="d-md-none stack-list mt-3">
+    {% for client in clients %}
+    <div class="record-card">
+      <div class="record-head">
+        <div>
+          {% set score = client_score(client) %}<div class="d-flex align-items-center gap-2 flex-wrap"><strong>{{ client.full_name }}</strong><span class="score-pill {{ score.css_class }} score-inline" data-bs-toggle="tooltip" data-bs-placement="top" title="Score {{ score.value }} de 100 · {{ score.label }}">{{ score.value }} · {{ score.label }}</span></div>
+          <div class="small text-muted">{{ client.cpf }}</div>
+        </div>
+        <span class="badge-soft">{{ client.neighborhood }}</span>
+      </div>
+      <div class="record-lines">
+        <div><span>WhatsApp</span><strong>{{ client.whatsapp }}</strong></div>
+      </div>
+      <div class="card-actions">
+        <a class="btn btn-sm btn-primary doc-action-btn" href="{{ url_for('client_detail', client_id=client.id) }}">Ficha</a>
+        <a class="btn btn-sm btn-gray" href="{{ url_for('client_edit', client_id=client.id) }}">Editar</a>
+        {% if current_user.role=='admin' %}
+        <form method="post" action="{{ url_for('client_delete', client_id=client.id) }}" class="w-100" onsubmit="return confirm('Excluir cliente?')"><input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn-sm btn-danger w-100 doc-action-btn">Excluir</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+    {% else %}
+    <p class="text-muted mb-0">Nenhum cliente encontrado.</p>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
+    new bootstrap.Tooltip(el);
+  });
+});
+</script>
+{% endblock %}

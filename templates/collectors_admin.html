@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+{% block page_title %}Cobradores{% endblock %}
+{% block content %}
+<div class="panel-card mb-3">
+  <div class="panel-head">
+    <div><h5>Cobradores cadastrados</h5><p class="panel-subtitle">Usuários com acesso restrito para cobrança externa.</p></div>
+    <a class="btn btn-primary doc-action-btn" href="{{ url_for('user_new', role='cobrador') }}">Novo cobrador</a>
+  </div>
+  <div class="row g-3">
+    {% for collector in collectors %}
+    <div class="col-md-4">
+      <div class="panel-card h-100 border">
+        <strong>{{ collector.display_name() }}</strong>
+        <div class="small text-muted">Usuário: {{ collector.username }}</div>
+        <div class="small text-muted">Status: {{ 'Ativo' if collector.is_active_user else 'Inativo' }}</div>
+        <a class="btn btn-gray btn-sm mt-3" href="{{ url_for('user_edit', user_id=collector.id) }}">Editar</a>
+      </div>
+    </div>
+    {% else %}
+    <div class="col-12"><p class="mb-0 text-muted">Nenhum cobrador cadastrado.</p></div>
+    {% endfor %}
+  </div>
+</div>
+<div class="panel-card">
+  <div class="panel-head"><div><h5>Clientes com cobrança em atraso</h5><p class="panel-subtitle">Acompanhe o último status informado pelo cobrador.</p></div></div>
+  <div class="row g-3">
+    {% for item in cards %}
+    {% set client = item.client %}
+    {% set visit = item.visit %}
+    <div class="col-md-6 col-xl-4">
+      <div class="panel-card h-100 border">
+        <strong>{{ client.full_name }}</strong>{% set score = client_score(client) %}<div class="score-mini"><div class="score-bar"><div class="score-bar-fill {{ score.css_class }}" style="width: {{ score.value }}%"></div></div><div class="score-meta"><span class="score-pill {{ score.css_class }}">Score {{ score.value }} · {{ score.label }}</span></div></div>
+        <div class="small text-muted mt-1">{{ client.full_address() }}</div>
+        <div class="small mt-2"><strong>Status do cobrador:</strong><br>{% if visit %}{{ visit_status_labels.get(visit.status, visit.status) }}{% if visit.collector %}<br><span class="text-muted">{{ visit.collector.display_name() }} • {{ visit.created_at.strftime('%d/%m/%Y %H:%M') }}</span>{% endif %}{% else %}<span class="text-muted">Sem retorno ainda.</span>{% endif %}</div>
+        <a class="btn btn-primary btn-sm mt-3" href="{{ url_for('client_detail', client_id=client.id) }}">Abrir ficha</a>
+      </div>
+    </div>
+    {% else %}
+    <div class="col-12"><p class="mb-0 text-muted">Nenhum cliente em atraso no momento.</p></div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

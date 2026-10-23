@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% block page_title %}Plataforma{% endblock %}
+{% block content %}
+<div class="panel-card">
+  <div class="panel-head"><h5>Painel da plataforma</h5><a class="btn btn-primary doc-action-btn" href="{{ url_for('tenant_new') }}">Nova empresa</a></div>
+  <div class="stats-grid">
+    <div class="stat-card"><span class="stat-label">Empresas</span><div class="stat-value">{{ tenants|length }}</div></div>
+    <div class="stat-card"><span class="stat-label">Ativos</span><div class="stat-value">{{ tenants|selectattr('subscription_status', 'equalto', 'active')|list|length }}</div></div>
+    <div class="stat-card"><span class="stat-label">Teste grátis</span><div class="stat-value">{{ tenants|selectattr('subscription_status', 'equalto', 'trial')|list|length }}</div></div>
+    <div class="stat-card"><span class="stat-label">Cortesia</span><div class="stat-value">{{ tenants|selectattr('subscription_status', 'equalto', 'courtesy')|list|length }}</div></div>
+  </div>
+</div>
+<div class="panel-card mt-3">
+  <div class="panel-head"><h5>Empresas da plataforma</h5><a class="btn btn-gray" href="{{ url_for('tenants_list') }}">Ver tudo</a></div>
+  <div class="table-responsive">
+    <table class="table md-table align-middle mb-0">
+      <thead><tr><th>Empresa</th><th>Status</th><th>Acesso até</th><th class="text-end">Ações</th></tr></thead>
+      <tbody>
+      {% for tenant in tenants %}
+        <tr>
+          <td>{{ tenant.company_name }}</td>
+          <td>{{ tenant.subscription_label() }}</td>
+          <td>{{ fmt_date(tenant.access_until()) }}</td>
+          <td class="text-end">
+            <div class="d-flex gap-2 justify-content-end">
+              <a class="btn btn-sm btn-primary" href="{{ url_for('tenant_switch', tenant_id=tenant.id) }}">Entrar</a>
+              <a class="btn btn-sm btn-gray" href="{{ url_for('tenant_edit', tenant_id=tenant.id) }}">Editar</a>
+            </div>
+          </td>
+        </tr>
+      {% else %}
+        <tr><td colspan="4" class="text-muted">Nenhuma empresa cadastrada.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% block page_title %}Pagamentos{% endblock %}
+{% block content %}
+<div class="panel-card">
+  <div class="panel-head"><div><h5>Histórico de pagamentos</h5><p class="panel-subtitle">Datas e informações relevantes</p></div></div>
+  <div class="payment-timeline">
+    {% for p in payments %}
+    <div class="timeline-item timeline-item-rich">
+      <div>
+        <strong>{{ p.loan.client.full_name }}</strong>
+        <div class="small text-muted">{{ fmt_date(p.payment_date) }} • {{ p.payment_type.replace('_',' ') }}{% if p.observation %} • {{ p.observation }}{% endif %}</div>
+        <div class="small text-muted">Registrado por {{ p.owner_payment_user.username }}</div>
+      </div>
+      <div class="timeline-right">
+        <strong>{{ fmt_money(p.amount_paid) }}</strong>
+        {% if current_user.role=='admin' %}
+        <form method="post" action="{{ url_for('payment_delete', payment_id=p.id) }}" onsubmit="return confirm('Excluir pagamento e restaurar contrato?')"><input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn-sm btn-danger mt-2 doc-action-btn">Excluir</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+    {% else %}
+    <p class="text-muted mb-0">Nenhum pagamento.</p>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

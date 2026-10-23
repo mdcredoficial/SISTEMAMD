@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% block page_title %}Cobranças em atraso{% endblock %}
+{% block content %}
+<div class="panel-card mb-3">
+  <div class="panel-head">
+    <div>
+      <h5>Clientes para cobrança</h5>
+      <p class="panel-subtitle">Somente dívidas atrasadas e fichas com endereço e anexos.</p>
+    </div>
+  </div>
+</div>
+<div class="row g-3">
+  {% for item in cards %}
+  {% set client = item.client %}
+  {% set snap = item.snap %}
+  {% set visit = item.visit %}
+  <div class="col-12">
+    <div class="panel-card">
+      <div class="d-flex flex-wrap justify-content-between gap-3 align-items-start">
+        <div>
+          <h5 class="mb-1">{{ client.full_name }}</h5>{% set score = client_score(client) %}<div class="score-mini"><div class="score-bar"><div class="score-bar-fill {{ score.css_class }}" style="width: {{ score.value }}%"></div></div><div class="score-meta"><span class="score-pill {{ score.css_class }}">Score {{ score.value }} · {{ score.label }}</span></div></div>
+          <div class="text-muted small mb-2">{{ client.full_address() }}</div>
+          <div class="d-flex flex-wrap gap-2">
+            <span class="badge-soft badge-danger">{{ snap.status_label }}</span>
+            <span class="badge-soft badge-warning">{{ snap.days_overdue }} dia(s) de atraso</span>
+            <span class="badge-soft badge-info">{{ fmt_money(snap.updated_amount) }} em aberto</span>
+          </div>
+          {% if visit %}
+          <div class="small mt-2"><strong>Último status:</strong> {{ visit_status_labels.get(visit.status, visit.status) }}{% if visit.collector %} • {{ visit.collector.display_name() }}{% endif %}</div>
+          {% endif %}
+        </div>
+        <div class="d-flex flex-column gap-2 align-items-stretch">
+          {% if client.full_address() and client.full_address() != '-' %}
+          <button type="button" class="btn btn-outline-primary btn-sm" data-address="{{ client.full_address()|e }}" data-label="cliente" onclick="openRouteChooser(this.dataset.address, this.dataset.label)"><i class="bi bi-sign-turn-right"></i> Abrir rotas</button>
+          {% endif %}
+          <a class="btn btn-primary btn-sm" href="{{ url_for('collector_client_detail', client_id=client.id) }}">Abrir ficha</a>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <div class="col-12"><div class="panel-card"><p class="mb-0 text-muted">Nenhum cliente com dívida atrasada.</p></div></div>
+  {% endfor %}
+</div>
+{% endblock %}

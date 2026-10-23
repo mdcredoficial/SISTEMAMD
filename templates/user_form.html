@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% block page_title %}{{ 'Editar usuário' if user else 'Novo usuário' }}{% endblock %}
+{% block content %}
+<form method="post" class="panel-card"><input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+  <div class="row g-3">
+    <div class="col-md-4"><label class="form-label">Nome</label><input class="form-control" name="full_name" value="{{ user.full_name if user else "" }}" required></div>
+    <div class="col-md-4"><label class="form-label">Usuário</label><input class="form-control" name="username" value="{{ user.username if user else "" }}" required></div>
+    <div class="col-md-4"><label class="form-label">Senha {% if user %}(deixe em branco para manter){% endif %}</label><input type="password" class="form-control" name="password" {% if not user %}required{% endif %}></div>
+    <div class="col-md-4"><label class="form-label">Perfil</label><select class="form-select" name="role"><option value="admin" {% if selected_role=='admin' %}selected{% endif %}>Admin</option><option value="funcionario" {% if selected_role=='funcionario' %}selected{% endif %}>Funcionário</option><option value="cobrador" {% if selected_role=='cobrador' %}selected{% endif %}>Cobrador</option></select></div>
+    {% if user %}<div class="col-md-4"><label class="form-label">Status</label><select class="form-select" name="is_active_user"><option value="1" {% if user.is_active_user %}selected{% endif %}>Ativo</option><option value="0" {% if not user.is_active_user %}selected{% endif %}>Inativo</option></select></div>{% endif %}
+  </div>
+  <div class="mt-4 d-flex gap-2"><button class="btn btn-primary doc-action-btn">Salvar</button><a class="btn btn-gray" href="{{ url_for('users_list') }}">Cancelar</a></div>
+</form>
+{% endblock %}

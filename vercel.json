@@ -1,0 +1,9 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "app.py": {
+      "includeFiles": "{templates/**,static/**,public/static/**,loan_rules.py}",
+      "excludeFiles": "{controlcred.db,mdcred.db,uploads/**,backups/**,tests/**,__pycache__/**,*.pyc}"
+    }
+  }
+}

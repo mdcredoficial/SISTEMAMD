@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% block page_title %}Perfil e Marca{% endblock %}
+{% block content %}
+<form method="post" enctype="multipart/form-data" class="panel-card" style="max-width:900px"><input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+  <div class="row g-3">
+    {% if tenant %}<div class="col-12"><div class="alert alert-info mb-0"><strong>Assinatura:</strong> {{ tenant.subscription_label() }} {% if tenant.access_until() %}• acesso até {{ fmt_date(tenant.access_until()) }}{% endif %}</div></div>{% endif %}
+    <div class="col-md-6"><label class="form-label">Usuário</label><input class="form-control" name="username" value="{{ current_user.username }}" required></div>
+    {% if tenant %}<div class="col-md-6"><label class="form-label">Nome da empresa</label><input class="form-control" name="company_name" value="{{ tenant.company_name }}"></div>{% endif %}
+    <div class="col-md-6"><label class="form-label">Nova senha</label><input type="password" class="form-control" name="password"></div>
+    <div class="col-12">
+      <div class="panel-card bg-transparent border-0 p-0 shadow-none">
+        <label class="form-label">Logotipo do sistema</label>
+        <div class="d-flex flex-column flex-md-row gap-3 align-items-start">
+          <div class="logo-preview-card">
+            <img src="{{ brand_logo_url() }}" alt="Logotipo atual" class="profile-logo-preview">
+          </div>
+          <div class="flex-grow-1">
+            <input type="file" class="form-control" name="brand_logo" accept=".png,.jpg,.jpeg,.webp,.svg">
+            <div class="small text-muted mt-2">Ao trocar o logotipo, a imagem da sidebar, o favicon, a tela de login e os PDFs passam a usar sua marca.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12">
+      <label class="form-label">Mensagem personalizada de cobrança</label>
+      <textarea class="form-control" name="charge_message_template" rows="6" placeholder="Digite a mensagem usada no botão cobrar">{{ current_user.charge_message_template or '' }}</textarea>
+      <div class="small text-muted mt-2">Use as variáveis: {nome}, {valor}, {vencimento}, {dias_atraso}. Se deixar em branco, o sistema usa a mensagem padrão.</div>
+    </div>
+  </div>
+  <div class="mt-4"><button class="btn btn-primary doc-action-btn">Atualizar perfil</button></div>
+</form>
+{% endblock %}

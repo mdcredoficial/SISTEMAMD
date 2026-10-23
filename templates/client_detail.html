@@ -1,0 +1,153 @@
+{% extends 'base.html' %}
+{% block page_title %}Ficha do cliente{% endblock %}
+{% block content %}
+<div class="row g-3 mb-3">
+  <div class="col-xl-4">
+    <div class="panel-card h-100">
+      <div class="panel-head"><div><h5>{{ client.full_name }}</h5><p class="panel-subtitle">Cadastro completo</p></div><a class="btn btn-primary btn-sm doc-action-btn" target="_blank" href="{{ client.whatsapp_link(render_charge_message(current_user.charge_message_template, client)) }}">Cobrar</a></div>
+      {% set score = client_score(client) %}<div class="score-panel"><span class="panel-subtitle">Score do Cliente</span><strong>{{ score.value }} pontos</strong><div class="score-wrap"><div class="score-bar"><div class="score-bar-fill {{ score.css_class }}" style="width: {{ score.value }}%"></div></div><div class="score-meta"><span class="score-pill {{ score.css_class }}">{{ score.label }}</span><small class="text-muted">0 a 100</small></div></div></div><div class="detail-grid">
+        <div><span>CPF</span><strong>{{ client.cpf }}</strong></div>
+        <div><span>WhatsApp</span><strong>{{ client.whatsapp }}</strong></div>
+        <div><span>Telefone</span><strong>{{ client.phone or '-' }}</strong></div>
+        <div>
+          <span>Endereço</span>
+          <strong>{{ client.full_address() }}</strong>
+          {% if client.full_address() and client.full_address() != '-' %}
+          <button type="button" class="btn btn-outline-primary btn-sm route-btn mt-2" data-address="{{ client.full_address()|e }}" data-label="cliente" onclick="openRouteChooser(this.dataset.address, this.dataset.label)">
+            <i class="bi bi-sign-turn-right"></i> Abrir rota
+          </button>
+          {% endif %}
+        </div>
+        <div><span>Parente</span><strong>{{ client.contact_name or '-' }}</strong></div>
+        <div><span>Parentesco</span><strong>{{ client.relationship or '-' }}</strong></div>
+        <div><span>Contato do parente</span><strong>{{ client.kin_phone or '-' }}</strong></div>
+        <div>
+          <span>Endereço familiar</span>
+          <strong>{{ client.family_address_display() or '-' }}</strong>
+          {% if client.family_address_display() %}
+          <button type="button" class="btn btn-outline-primary btn-sm route-btn mt-2" data-address="{{ client.family_address_display()|e }}" data-label="familiar" onclick="openRouteChooser(this.dataset.address, this.dataset.label)">
+            <i class="bi bi-sign-turn-right"></i> Abrir rota
+          </button>
+          {% endif %}
+        </div>
+        <div><span>Casa</span><strong>{{ client.house_status or '-' }}</strong></div>
+        <div><span>E-mail</span><strong>{{ client.email or '-' }}</strong></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-xl-8">
+    <div class="panel-card h-100">
+      <div class="panel-head"><div><h5>Documentos</h5><p class="panel-subtitle">Imagens e PDFs do cliente</p></div><a class="btn btn-gray btn-sm" href="{{ url_for('client_edit', client_id=client.id) }}">Editar</a></div>
+      <div class="row g-3">
+        {% for field, label in document_fields.items() %}
+        {% set file = getattr(client, field) %}
+        <div class="col-md-6 col-xl-4">
+          <div class="doc-card h-100">
+            <div class="doc-head"><strong>{{ label }}</strong></div>
+            {% if file %}
+              {% if is_image(file) %}
+                <a href="{{ url_for('uploaded_file', filename=file) }}" target="_blank" class="doc-image-link">
+                  <img src="{{ url_for('uploaded_file', filename=file) }}" class="img-fluid rounded-4 mt-3 doc-preview">
+                </a>
+                <div class="doc-actions inside-card-actions mt-3">
+                  <a class="btn btn-action btn-primary btn-sm doc-action-btn" href="{{ url_for('uploaded_file', filename=file) }}" target="_blank"><i class="bi bi-eye"></i> Abrir arquivo</a>
+                  <form method="post" action="{{ url_for('client_document_remove', client_id=client.id, field_name=field) }}" onsubmit="return confirm('Remover este arquivo?');"><input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                    <button class="btn btn-action btn-danger btn-sm doc-action-btn" type="submit"><i class="bi bi-trash"></i> Remover</button>
+                  </form>
+                </div>
+              {% else %}
+                <a class="pdf-card mt-3" href="{{ url_for('uploaded_file', filename=file) }}" target="_blank">
+                  <i class="bi bi-file-earmark-pdf-fill"></i>
+                  <div>
+                    <strong>Abrir PDF</strong>
+                    <div class="small text-muted">Clique para visualizar</div>
+                  </div>
+                </a>
+                <div class="doc-actions inside-card-actions mt-3">
+                  <a class="btn btn-action btn-primary btn-sm doc-action-btn" href="{{ url_for('uploaded_file', filename=file) }}" target="_blank"><i class="bi bi-eye"></i> Abrir arquivo</a>
+                  <form method="post" action="{{ url_for('client_document_remove', client_id=client.id, field_name=field) }}" onsubmit="return confirm('Remover este arquivo?');"><input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                    <button class="btn btn-action btn-danger btn-sm doc-action-btn" type="submit"><i class="bi bi-trash"></i> Remover</button>
+                  </form>
+                </div>
+              {% endif %}
+            {% else %}
+              <div class="empty-doc mt-3"><i class="bi bi-file-earmark"></i><span>Sem arquivo</span></div>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-12">
+    <div class="panel-card">
+      <div class="panel-head"><div><h5>Histórico de empréstimos</h5><p class="panel-subtitle">Contratos vinculados ao cliente</p></div><a class="btn btn-primary btn-sm doc-action-btn" href="{{ url_for('loan_new') }}">Novo empréstimo</a></div>
+      <div class="stack-list">
+        {% for loan in loans %}
+        {% set snap = loan_snapshot(loan) %}
+        <div class="loan-card loan-card-final">
+          <div class="loan-card-main loan-card-main-final">
+            <div class="loan-summary">
+              <strong>Contrato #{{ loan.id }}</strong>
+              <div class="d-flex flex-wrap gap-2 align-items-center mb-2">
+                <span class="loan-type-pill loan-type-{{ loan.loan_type }}">{{ snap.loan_type_label }}</span>
+                <div class="small text-muted">Criado em {{ fmt_date(loan.loan_date) }} • Vencimento {{ fmt_date(loan.due_date) }}</div>
+              </div>
+              <div class="small text-muted">Prazo: {{ snap.term_label }}</div>
+              {% if snap.next_due_date %}<div class="small text-muted">Próximo vencimento: {{ fmt_date(snap.next_due_date) }}</div>{% endif %}
+                            <div class="loan-status-inline mt-3">
+                <span class="badge-soft {% if snap.days_overdue %}badge-danger{% elif snap.status_label == 'Pagar hoje' %}badge-warning{% else %}badge-success{% endif %}">{{ snap.status_label }}</span>
+                {% if snap.days_overdue %}<small>{% if loan.loan_type == 'semanal' and snap.overdue_detail_lines %}{{ snap.overdue_detail_lines|length }} parcela(s) em atraso<br> Dias de atraso acumulados: {{ snap.overdue_detail_lines|map(attribute='fine_count')|sum }}{% else %}Atrasado há {{ snap.days_overdue }} dia(s){% endif %}</small>{% endif %}
+                {% if snap.fine_count and snap.fine_count > 0 %}<small>{{ snap.fine_count }} multa(s) acumulada(s): {{ fmt_money(snap.fine) }}</small>{% endif %}
+              </div>
+            </div>
+            <div class="loan-side-final">
+              <div class="loan-values loan-values-final">
+                <div><span>Emprestado</span><strong>{{ fmt_money(loan.amount) }}</strong></div>
+                <div><span>Total contrato</span><strong>{{ fmt_money(snap.total_contract_amount) }}</strong></div>
+                <div><span>Vencimento</span><strong>{{ fmt_date(loan.due_date) }}</strong></div>
+                <div><span>Atualizado</span><strong>{{ fmt_money(snap.updated_amount) }}</strong></div>
+                <div><span>{% if loan.loan_type == 'diario' %}Parcela diária{% elif loan.loan_type == 'semanal' %}Parcela semanal{% else %}Parcela{% endif %}</span><strong>{{ fmt_money(snap.installment_amount) }}</strong></div>
+                <div><span>Parcelas pagas</span><strong>{{ snap.paid_installments }}/{{ snap.total_installments }}</strong></div>
+              </div>
+              <div class="loan-top-actions loan-top-actions-final">
+                <a class="btn btn-gray btn-sm" href="{{ url_for('loan_edit', loan_id=loan.id) }}">Editar</a>
+                {% if current_user.role=='admin' %}
+                <form method="post" action="{{ url_for('loan_delete', loan_id=loan.id) }}" onsubmit="return confirm('Excluir empréstimo?')"><input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                  <button class="btn btn-danger btn-sm doc-action-btn">Excluir</button>
+                </form>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+          {% include '_loan_actions.html' %}
+        </div>
+        {% else %}
+        <p class="text-muted mb-0">Sem empréstimos.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  <div class="col-12">
+    <div class="panel-card">
+      <div class="panel-head"><div><h5>Histórico de pagamentos</h5><p class="panel-subtitle">Resumo simples dos recebimentos</p></div></div>
+      <div class="payment-timeline">
+        {% for p in payments %}
+        <div class="timeline-item">
+          <div>
+            <strong>{{ fmt_date(p.payment_date) }}</strong>
+            <div class="small text-muted">{{ p.payment_type.replace('_', ' ') }}{% if p.observation %} • {{ p.observation }}{% endif %}</div>
+          </div>
+          <strong>{{ fmt_money(p.amount_paid) }}</strong>
+        </div>
+        {% else %}
+        <p class="text-muted mb-0">Sem pagamentos.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

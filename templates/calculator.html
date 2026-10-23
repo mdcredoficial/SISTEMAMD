@@ -1,0 +1,158 @@
+{% extends 'base.html' %}
+{% block page_title %}Calculadora{% endblock %}
+{% block content %}
+<div class="panel-card">
+  <div class="panel-head">
+    <div>
+      <h3 class="mb-1">Calculadora</h3>
+      <p class="text-muted mb-0">Calculadora comum, igual a do celular.</p>
+    </div>
+  </div>
+
+  <div class="calculator-card mx-auto">
+    <div class="calculator-display" id="calcDisplay">0</div>
+    <div class="calculator-grid">
+      <button class="calc-btn calc-btn-muted" data-action="clear">C</button>
+      <button class="calc-btn calc-btn-muted" data-action="backspace"><i class="bi bi-backspace"></i></button>
+      <button class="calc-btn calc-btn-muted" data-action="percent">%</button>
+      <button class="calc-btn calc-btn-operator" data-value="/">÷</button>
+
+      <button class="calc-btn" data-value="7">7</button>
+      <button class="calc-btn" data-value="8">8</button>
+      <button class="calc-btn" data-value="9">9</button>
+      <button class="calc-btn calc-btn-operator" data-value="*">×</button>
+
+      <button class="calc-btn" data-value="4">4</button>
+      <button class="calc-btn" data-value="5">5</button>
+      <button class="calc-btn" data-value="6">6</button>
+      <button class="calc-btn calc-btn-operator" data-value="-">−</button>
+
+      <button class="calc-btn" data-value="1">1</button>
+      <button class="calc-btn" data-value="2">2</button>
+      <button class="calc-btn" data-value="3">3</button>
+      <button class="calc-btn calc-btn-operator" data-value="+">+</button>
+
+      <button class="calc-btn calc-btn-zero" data-value="0">0</button>
+      <button class="calc-btn" data-value=".">,</button>
+      <button class="calc-btn calc-btn-equals" data-action="equals">=</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+{{ super() }}
+<script>
+(function () {
+  const display = document.getElementById('calcDisplay');
+  if (!display) return;
+  let expr = '';
+  let justCalculated = false;
+
+  function render(value) {
+    display.textContent = value || '0';
+  }
+
+  function normalizeForEval(input) {
+    return input.replace(/,/g, '.');
+  }
+
+  function formatResult(value) {
+    if (!isFinite(value)) return 'Erro';
+    const text = String(value);
+    return text.replace('.', ',');
+  }
+
+  function appendValue(val) {
+    if (justCalculated && /[0-9.,]/.test(val)) {
+      expr = '';
+    }
+    justCalculated = false;
+    if (val === '.' && /(^|[+\-*/])[^+\-*/]*\./.test(expr)) return;
+    expr += val === '.' ? ',' : val;
+    render(expr);
+  }
+
+  function clearAll() {
+    expr = '';
+    justCalculated = false;
+    render('0');
+  }
+
+  function backspace() {
+    expr = expr.slice(0, -1);
+    render(expr);
+  }
+
+  function applyPercent() {
+    if (!expr) return;
+
+    try {
+      const match = expr.match(/(\d+(?:[.,]\d+)?)$/);
+      if (!match) return;
+
+      let percent = parseFloat(match[0].replace(',', '.')) / 100;
+      const before = expr.slice(0, match.index);
+      const operator = before.slice(-1);
+
+      let result = percent;
+      const baseMatch = before.slice(0, -1).match(/(\d+(?:[.,]\d+)?)$/);
+
+      if (baseMatch) {
+        let base = parseFloat(baseMatch[0].replace(',', '.'));
+
+        if (operator === '+') result = base * percent;
+        if (operator === '-') result = base * percent;
+        if (operator === '*') result = percent;
+        if (operator === '/') result = percent;
+      }
+
+      expr = before + String(result).replace('.', ',');
+      render(expr);
+
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  function calculate() {
+    if (!expr) return;
+    try {
+      const result = Function('return ' + normalizeForEval(expr))();
+      expr = formatResult(result);
+      justCalculated = true;
+      render(expr);
+    } catch (e) {
+      expr = '';
+      justCalculated = false;
+      render('Erro');
+    }
+  }
+
+  document.querySelectorAll('.calc-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const action = btn.dataset.action;
+      const value = btn.dataset.value;
+      if (action === 'clear') return clearAll();
+      if (action === 'backspace') return backspace();
+      if (action === 'percent') return applyPercent();
+      if (action === 'equals') return calculate();
+      if (value) return appendValue(value);
+    });
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (!display) return;
+    if (/^[0-9]$/.test(e.key)) return appendValue(e.key);
+    if (['+', '-', '*', '/'].includes(e.key)) return appendValue(e.key);
+    if (e.key === ',' || e.key === '.') return appendValue('.');
+    if (e.key === 'Enter' || e.key === '=') {
+      e.preventDefault();
+      return calculate();
+    }
+    if (e.key === 'Backspace') return backspace();
+    if (e.key === 'Escape') return clearAll();
+    if (e.key === '%') return applyPercent();
+  });
+})();
+</script>
+{% endblock %}

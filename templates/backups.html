@@ -1,0 +1,9 @@
+{% extends 'base.html' %}
+{% block page_title %}Backups{% endblock %}
+{% block content %}
+<div class="panel-card"><div class="panel-head flex-wrap"><h5>Histórico de backups</h5>{% if not cloud_backup_mode %}<div class="d-flex gap-2 flex-wrap"><form method="post" action="{{ url_for('backups_generate') }}"><input type="hidden" name="_csrf_token" value="{{ csrf_token() }}"><button class="btn btn-primary btn-action btn-sm doc-action-btn">Fazer backup agora</button></form><a class="btn btn-gray" href="{{ url_for('backup_open_folder', kind='db') }}">Abrir pasta DB</a><a class="btn btn-gray" href="{{ url_for('backup_open_folder', kind='excel') }}">Abrir pasta Excel</a></div>{% endif %}</div>
+{% if cloud_backup_mode %}<div class="alert alert-info">Os backups online são feitos pelo provedor PostgreSQL configurado para esta instalação.</div>{% endif %}
+<div class="table-responsive"><table class="table md-table"><thead><tr><th>Nome</th><th>Tipo</th><th>Data</th><th>Tamanho</th><th>Ações</th></tr></thead><tbody>
+{% for item in items %}<tr><td data-label="Nome">{{ item.name }}</td><td data-label="Tipo">{{ item.kind }}</td><td data-label="Data">{{ item.modified.strftime('%d/%m/%Y %H:%M') }}</td><td data-label="Tamanho">{{ '%.1f KB'|format(item.size / 1024) }}</td><td data-label="Ações"><div class="d-flex gap-2"><a class="btn btn-sm btn-primary doc-action-btn" href="{{ url_for('backup_download', kind=item.kind, filename=item.name) }}">Baixar</a><form method="post" action="{{ url_for('backup_delete', kind=item.kind, filename=item.name) }}" onsubmit="return confirm('Excluir backup?')"><input type="hidden" name="_csrf_token" value="{{ csrf_token() }}"><button class="btn btn-sm btn-danger doc-action-btn">Excluir</button></form></div></td></tr>{% else %}<tr><td colspan="5" class="text-muted">Sem backups.</td></tr>{% endfor %}
+</tbody></table></div></div>
+{% endblock %}

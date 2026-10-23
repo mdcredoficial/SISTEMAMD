@@ -1,0 +1,105 @@
+{% extends 'base.html' %}
+{% block page_title %}Dashboard{% endblock %}
+{% block content %}
+<div class="stats-grid mb-4">
+  <div class="stat-card stat-accent"><span>Clientes ativos</span><h3 class="stat-value">{{ clients_count }}</h3></div>
+  <div class="stat-card"><span>Empréstimos ativos</span><h3 class="stat-value">{{ active_loans_count }}</h3></div>
+  <div class="stat-card"><span>Total emprestado</span><h3 class="stat-value stat-value-money">{{ fmt_money(total_emprestado) }}</h3></div>
+  <div class="stat-card"><span>Total a receber</span><h3 class="stat-value stat-value-money">{{ fmt_money(total_receber) }}</h3></div>
+  <div class="stat-card"><span>Total recebido</span><h3 class="stat-value stat-value-money">{{ fmt_money(total_recebido) }}</h3></div>
+  <div class="stat-card"><span>Caixa</span><h3 class="stat-value stat-value-money">{{ fmt_money(saldo_caixa) }}</h3></div>
+  <div class="stat-card"><span>Entradas</span><h3 class="stat-value stat-value-money">{{ fmt_money(total_entradas) }}</h3></div>
+  <div class="stat-card"><span>Saídas</span><h3 class="stat-value stat-value-money">{{ fmt_money(total_saidas) }}</h3></div>
+  <div class="stat-card"><span>Despesas</span><h3 class="stat-value stat-value-money">{{ fmt_money(total_despesas) }}</h3></div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-xl-6">
+    <div class="panel-card chart-card">
+      <div class="panel-head"><div><h5>Empréstimos por mês</h5><p class="panel-subtitle">Contratos cadastrados</p></div></div>
+      <div class="chart-wrap"><canvas id="loanChart"></canvas></div>
+    </div>
+  </div>
+  <div class="col-xl-6">
+    <div class="panel-card chart-card">
+      <div class="panel-head"><div><h5>Recebimentos por mês</h5><p class="panel-subtitle">Valores já recebidos</p></div></div>
+      <div class="chart-wrap"><canvas id="paymentChart"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-xl-6">
+    <div class="panel-card">
+      <div class="panel-head"><div><h5>Clientes para pagar hoje</h5><p class="panel-subtitle">Contratos no vencimento do dia</p></div></div>
+      <div class="stack-list">
+        {% for loan in due_today %}
+        {% set snap = loan_snapshot(loan) %}
+        <div class="record-card compact-record">
+          <div>
+            <strong>{{ loan.client.full_name }}</strong>
+            <div class="text-muted small">{{ loan.client.whatsapp }} • {{ snap.loan_type_label }}</div>
+          </div>
+          <div class="record-meta">
+            <span class="badge-soft badge-info">{{ snap.status_label }}</span>
+            <strong>{{ fmt_money(snap.current_due_amount if snap.current_due_amount else snap.updated_amount) }}</strong><div class="small text-muted">{{ snap.term_label }}</div>{% if snap.next_due_date %}<div class="small text-muted">Próximo: {{ fmt_date(snap.next_due_date) }}</div>{% endif %}
+          </div>
+          {% include '_loan_actions.html' %}
+        </div>
+        {% else %}
+        <p class="text-muted mb-0">Nenhum cliente para hoje.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  <div class="col-xl-6">
+    <div class="panel-card">
+      <div class="panel-head"><div><h5>Clientes atrasados</h5><p class="panel-subtitle">Com multa diária aplicada</p></div></div>
+      <div class="stack-list">
+        {% for loan in overdue %}
+        {% set snap = loan_snapshot(loan) %}
+        <div class="record-card compact-record danger-record">
+          <div>
+            <strong>{{ loan.client.full_name }}</strong>
+            <div class="text-muted small">{{ loan.client.whatsapp }} • {{ snap.loan_type_label }}</div>
+          </div>
+          <div class="record-meta">
+            <span class="badge-soft badge-danger">{% if loan.loan_type == "semanal" and snap.overdue_detail_lines %}{{ snap.overdue_detail_lines|length }} parcela(s) em atraso{% elif snap.days_overdue == 1 %}Atrasado há 1 dia{% else %}Atrasado há {{ snap.days_overdue }} dias{% endif %}</span>
+            <strong>{{ fmt_money(snap.current_due_amount if snap.current_due_amount else snap.updated_amount) }}</strong><div class="small text-muted">{{ snap.term_label }}</div>{% if snap.next_due_date %}<div class="small text-muted">Próximo: {{ fmt_date(snap.next_due_date) }}</div>{% endif %}
+          </div>
+          {% include '_loan_actions.html' %}
+        </div>
+        {% else %}
+        <p class="text-muted mb-0">Nenhum cliente atrasado.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  <div class="col-12">
+    <div class="panel-card">
+      <div class="panel-head"><div><h5>Últimos pagamentos</h5><p class="panel-subtitle">Resumo recente</p></div><a class="btn btn-primary btn-sm doc-action-btn" href="{{ url_for('payments_list') }}">Ver histórico</a></div>
+      <div class="payment-timeline">
+        {% for p in recent_payments %}
+          <div class="timeline-item">
+            <div>
+              <strong>{{ p.loan.client.full_name }}</strong>
+              <div class="small text-muted">{{ p.payment_type.replace('_',' ') }} • {{ fmt_date(p.payment_date) }}</div>
+            </div>
+            <strong>{{ fmt_money(p.amount_paid) }}</strong>
+          </div>
+        {% else %}
+          <p class="text-muted mb-0">Nenhum pagamento registrado.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const labels = {{ chart_labels|tojson }};
+const baseChartOptions = {responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true, ticks:{precision:0}}, x:{grid:{display:false}}}};
+new Chart(document.getElementById('loanChart'), {type:'bar',data:{labels:labels,datasets:[{label:'Empréstimos',data:{{ loan_chart|tojson }}, borderRadius:8, maxBarThickness:32}]},options:baseChartOptions});
+new Chart(document.getElementById('paymentChart'), {type:'bar',data:{labels:labels,datasets:[{label:'Recebimentos',data:{{ payment_chart|tojson }}, borderRadius:8, maxBarThickness:32}]},options:baseChartOptions});
+</script>
+{% endblock %}

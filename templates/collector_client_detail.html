@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+{% block page_title %}Ficha de cobrança{% endblock %}
+{% block content %}
+<div class="row g-3 mb-3">
+  <div class="col-lg-5">
+    <div class="panel-card h-100">
+      <div class="panel-head"><div><h5>{{ client.full_name }}</h5><p class="panel-subtitle">Dados do cliente</p></div></div>
+      {% set score = client_score(client) %}<div class="score-panel"><span class="panel-subtitle">Score do Cliente</span><strong>{{ score.value }} pontos</strong><div class="score-wrap"><div class="score-bar"><div class="score-bar-fill {{ score.css_class }}" style="width: {{ score.value }}%"></div></div><div class="score-meta"><span class="score-pill {{ score.css_class }}">{{ score.label }}</span><small class="text-muted">0 a 100</small></div></div></div><div class="detail-grid">
+        <div><span>CPF</span><strong>{{ client.cpf }}</strong></div>
+        <div><span>WhatsApp</span><strong>{{ client.whatsapp }}</strong></div>
+        <div><span>Telefone</span><strong>{{ client.phone or '-' }}</strong></div>
+        <div><span>Endereço</span><strong>{{ client.full_address() }}</strong>{% if client.full_address() and client.full_address() != '-' %}<button type="button" class="btn btn-outline-primary btn-sm route-btn mt-2" data-address="{{ client.full_address()|e }}" data-label="cliente" onclick="openRouteChooser(this.dataset.address, this.dataset.label)"><i class="bi bi-sign-turn-right"></i> Abrir rotas</button>{% endif %}</div>
+        <div><span>Parente</span><strong>{{ client.contact_name or '-' }}</strong></div>
+        <div><span>Contato do parente</span><strong>{{ client.kin_phone or '-' }}</strong></div>
+        <div><span>Endereço familiar</span><strong>{{ client.family_address_display() or '-' }}</strong>{% if client.family_address_display() %}<button type="button" class="btn btn-outline-primary btn-sm route-btn mt-2" data-address="{{ client.family_address_display()|e }}" data-label="familiar" onclick="openRouteChooser(this.dataset.address, this.dataset.label)"><i class="bi bi-sign-turn-right"></i> Abrir rotas</button>{% endif %}</div>
+        <div><span>E-mail</span><strong>{{ client.email or '-' }}</strong></div>
+      </div>
+      <hr>
+      <div>
+        <strong>Status atual do cobrador</strong>
+        <div class="small text-muted mt-2">{% if latest_visit %}{{ visit_status_labels.get(latest_visit.status, latest_visit.status) }} • {{ latest_visit.created_at.strftime('%d/%m/%Y %H:%M') }}{% else %}Nenhum status informado ainda.{% endif %}</div>
+      </div>
+      <div class="d-grid gap-2 mt-3">
+        <form method="post" action="{{ url_for('collector_visit_update', client_id=client.id) }}"><input type="hidden" name="_csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="status" value="sucesso"><button class="btn btn-success w-100">Visita concluída com sucesso</button></form>
+        <form method="post" action="{{ url_for('collector_visit_update', client_id=client.id) }}"><input type="hidden" name="_csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="status" value="ausente"><button class="btn btn-warning w-100">Cliente não estava presente</button></form>
+        <form method="post" action="{{ url_for('collector_visit_update', client_id=client.id) }}"><input type="hidden" name="_csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="status" value="rota"><button class="btn btn-danger w-100">Não foi possível ir até essa rota</button></form>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-7">
+    <div class="panel-card h-100">
+      <div class="panel-head"><div><h5>Dívidas atrasadas</h5><p class="panel-subtitle">Resumo para cobrança</p></div></div>
+      <div class="stack-list">
+        {% for loan, snap in overdue_loans %}
+        <div class="loan-card loan-card-final">
+          <div class="loan-card-main loan-card-main-final">
+            <div class="loan-summary">
+              <strong>Contrato #{{ loan.id }}</strong>
+              <div class="small text-muted mb-2">{{ snap.loan_type_label }} • Vencimento {{ fmt_date(loan.due_date) }}</div>
+              <div class="loan-status-inline mt-2">
+                <span class="badge-soft badge-danger">{{ snap.status_label }}</span>
+                <small>{{ snap.days_overdue }} dia(s) de atraso</small>
+                {% if snap.fine_count and snap.fine_count > 0 %}<small>{{ snap.fine_count }} multa(s): {{ fmt_money(snap.fine) }}</small>{% endif %}
+              </div>
+            </div>
+            <div class="loan-side-final">
+              <div class="loan-values loan-values-final">
+                <div><span>Emprestado</span><strong>{{ fmt_money(loan.amount) }}</strong></div>
+                <div><span>Total contrato</span><strong>{{ fmt_money(snap.total_contract_amount) }}</strong></div>
+                <div><span>Atualizado</span><strong>{{ fmt_money(snap.updated_amount) }}</strong></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+<div class="panel-card">
+  <div class="panel-head"><div><h5>Anexos do cliente</h5><p class="panel-subtitle">Arquivos clicáveis</p></div></div>
+  <div class="row g-3">
+    {% for field, label in document_fields.items() %}
+    {% set file = getattr(client, field) %}
+    <div class="col-md-6 col-xl-4">
+      <div class="doc-card h-100">
+        <div class="doc-head"><strong>{{ label }}</strong></div>
+        {% if file %}
+          {% if is_image(file) %}
+            <a href="{{ url_for('uploaded_file', filename=file) }}" target="_blank" class="doc-image-link">
+              <img src="{{ url_for('uploaded_file', filename=file) }}" class="img-fluid rounded-4 mt-3 doc-preview">
+            </a>
+          {% else %}
+            <a class="pdf-card mt-3" href="{{ url_for('uploaded_file', filename=file) }}" target="_blank"><i class="bi bi-file-earmark-pdf-fill"></i><div><strong>Abrir PDF</strong><div class="small text-muted">Clique para visualizar</div></div></a>
+          {% endif %}
+          <div class="doc-actions inside-card-actions mt-3">
+            <a class="btn btn-action btn-primary btn-sm doc-action-btn" href="{{ url_for('uploaded_file', filename=file) }}" target="_blank"><i class="bi bi-eye"></i> Abrir arquivo</a>
+          </div>
+        {% else %}
+          <div class="empty-doc mt-3"><i class="bi bi-file-earmark"></i><span>Sem arquivo</span></div>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

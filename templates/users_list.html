@@ -1,0 +1,8 @@
+{% extends 'base.html' %}
+{% block page_title %}Usuários{% endblock %}
+{% block content %}
+<div class="panel-card"><div class="panel-head"><h5>Usuários do sistema</h5><a class="btn btn-primary doc-action-btn" href="{{ url_for('user_new') }}">Novo usuário</a></div>
+<div class="table-responsive"><table class="table md-table"><thead><tr><th>Nome</th><th>Usuário</th><th>Perfil</th><th>Status</th><th>Ações</th></tr></thead><tbody>
+{% for u in users %}<tr><td data-label="Nome">{{ u.display_name() }}</td><td data-label="Usuário">{{ u.username }}</td><td data-label="Perfil">{{ u.role }}</td><td data-label="Status">{{ 'Ativo' if u.is_active_user else 'Inativo' }}</td><td data-label="Ações"><div class="d-flex gap-2"><a class="btn btn-sm btn-gray" href="{{ url_for('user_edit', user_id=u.id) }}">Editar</a>{% if u.id != current_user.id %}<form method="post" action="{{ url_for('user_delete', user_id=u.id) }}" onsubmit="return confirm('Excluir usuário?')"><input type="hidden" name="_csrf_token" value="{{ csrf_token() }}"><button class="btn btn-sm btn-danger doc-action-btn">Excluir</button></form>{% endif %}</div></td></tr>{% endfor %}
+</tbody></table></div></div>
+{% endblock %}

@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+{% block page_title %}Despesas{% endblock %}
+{% block content %}
+<div class="row g-3">
+  <div class="col-xl-4">
+    <div class="panel-card">
+      <div class="panel-head"><div><h5>Nova despesa</h5><p class="panel-subtitle">Registre gastos operacionais</p></div></div>
+      <div class="mb-3 rounded-4 p-3" style="background:#f8fbff;border:1px solid var(--border)">
+        <div class="small text-muted">Total de despesas</div>
+        <div class="fs-4 fw-bold">{{ fmt_money(total_despesas) }}</div>
+      </div>
+      <form method="post" class="row g-3"><input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+        <div class="col-12">
+          <label class="form-label">Valor</label>
+          <input type="number" step="0.01" min="0" name="amount" class="form-control" required>
+        </div>
+        <div class="col-12">
+          <label class="form-label">Categoria</label>
+          <input type="text" name="category" class="form-control" placeholder="Ex.: combustível, internet, cobrança" required>
+        </div>
+        <div class="col-12">
+          <label class="form-label">Data</label>
+          <input type="date" name="expense_date" class="form-control" value="{{ today_str }}" required>
+        </div>
+        <div class="col-12">
+          <label class="form-label">Observação</label>
+          <textarea name="observation" class="form-control" rows="3"></textarea>
+        </div>
+        <div class="col-12">
+          <button class="btn btn-primary w-100 doc-action-btn">Salvar despesa</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <div class="col-xl-8">
+    <div class="panel-card">
+      <div class="panel-head"><div><h5>Histórico de despesas</h5><p class="panel-subtitle">Gastos lançados no sistema</p></div></div>
+      <div class="payment-timeline">
+        {% for e in expenses %}
+        <div class="timeline-item timeline-item-rich">
+          <div>
+            <strong>{{ e.category }}</strong>
+            <div class="small text-muted">{{ fmt_date(e.expense_date) }}{% if e.observation %} • {{ e.observation }}{% endif %}</div>
+            <div class="small text-muted">Registrado por {{ e.owner.username if e.owner else '-' }}</div>
+          </div>
+          <div class="timeline-right">
+            <strong class="text-danger">{{ fmt_money(e.amount) }}</strong>
+            {% if current_user.role == 'admin' %}
+            <form method="post" action="{{ url_for('expense_delete', expense_id=e.id) }}" onsubmit="return confirm('Excluir despesa e restaurar o caixa?')"><input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+              <button class="btn btn-sm btn-danger mt-2 doc-action-btn">Excluir</button>
+            </form>
+            {% endif %}
+          </div>
+        </div>
+        {% else %}
+        <p class="text-muted mb-0">Nenhuma despesa cadastrada.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

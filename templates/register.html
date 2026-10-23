@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block auth_content %}
+<div class="login-shell">
+  <div class="login-hero">
+    <div class="hero-brand-card">
+      <img src="{{ brand_logo_url() }}" alt="{{ tenant_display_name() }}" class="hero-brand-image">
+    </div>
+    <div class="hero-copy">
+      <span class="hero-badge">Teste grátis de 7 dias</span>
+      <h2>Crie seu CRM financeiro em poucos minutos.</h2>
+      <p>Cadastre sua empresa e comece a usar a ControlCred com teste grátis automático por 7 dias.</p>
+    </div>
+  </div>
+  <div class="login-form-wrap">
+    <form method="post" class="login-card"><input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+      <div class="login-card-head">
+        <h3>Cadastre-se</h3>
+        <p class="text-muted mb-0">Seu acesso é criado na hora, com ambiente próprio e isolado.</p>
+      </div>
+      {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+      {% for category, message in messages %}
+      <div class="alert alert-{{ category }}">{{ message }}</div>
+      {% endfor %}
+      {% endif %}
+      {% endwith %}
+      <div class="mb-3"><label class="form-label">Seu nome</label><input type="text" name="full_name" class="form-control form-control-lg" required></div>
+      <div class="mb-3"><label class="form-label">Nome da empresa</label><input type="text" name="company_name" class="form-control form-control-lg" required></div>
+      <div class="mb-3"><label class="form-label">WhatsApp</label><input type="text" name="whatsapp" class="form-control form-control-lg js-whatsapp-mask"></div>
+      <div class="mb-3"><label class="form-label">Usuário</label><input type="text" name="username" class="form-control form-control-lg" required></div>
+      <div class="mb-3"><label class="form-label">Senha</label><input type="password" name="password" class="form-control form-control-lg" required></div>
+      <button class="btn btn-primary btn-lg w-100 doc-action-btn">Criar meu acesso</button>
+      <div class="text-center mt-3">
+        <a href="{{ url_for('login') }}">Já tenho conta</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

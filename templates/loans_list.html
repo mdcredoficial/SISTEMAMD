@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+{% block page_title %}Empréstimos{% endblock %}
+{% block content %}
+<div class="panel-card">
+  <div class="panel-head"><div><h5>Contratos</h5><p class="panel-subtitle">Visual organizado por contrato</p></div><a class="btn btn-primary doc-action-btn" href="{{ url_for('loan_new') }}">Novo empréstimo</a></div>
+  <div class="stack-list">
+  {% for loan in loans %}
+    {% set snap = loan_snapshot(loan) %}
+    <div class="loan-card loan-card-final">
+      <div class="loan-card-main loan-card-main-final">
+        <div class="loan-summary">
+          <strong>{{ loan.client.full_name }}</strong>
+          <div class="d-flex flex-wrap gap-2 align-items-center mb-2">
+            <span class="loan-type-pill loan-type-{{ loan.loan_type }}">{{ snap.loan_type_label }}</span>
+            <div class="small text-muted">Contrato #{{ loan.id }} • Juros {{ loan.interest_percent }}%</div>
+          </div>
+          <div class="small text-muted">Prazo: {{ snap.term_label }}</div>
+          {% if snap.next_due_date %}<div class="small text-muted">Próximo vencimento: {{ fmt_date(snap.next_due_date) }}</div>{% endif %}
+                    <div class="loan-status-inline mt-3">
+            <span class="badge-soft {% if snap.days_overdue %}badge-danger{% elif snap.status_label == 'Pagar hoje' %}badge-warning{% else %}badge-success{% endif %}">{{ snap.status_label }}</span>
+            {% if snap.days_overdue %}<small>{% if loan.loan_type == 'semanal' and snap.overdue_detail_lines %}{{ snap.overdue_detail_lines|length }} parcela(s) em atraso<br>Dias de atraso acumulados: {{ snap.overdue_detail_lines|map(attribute='fine_count')|sum }}{% else %}Atrasado há {{ snap.days_overdue }} dia(s){% endif %}</small>{% endif %}
+            {% if snap.fine_count and snap.fine_count > 0 %}<small>{% if loan.loan_type == 'semanal' and snap.overdue_detail_lines %}{{ snap.overdue_detail_lines|map(attribute='fine_count')|sum }} multa(s) acumulada(s): {{ fmt_money(snap.fine) }}{% else %}{{ snap.fine_count }} multa(s) acumulada(s): {{ fmt_money(snap.fine) }}{% endif %}</small>{% endif %}
+          </div>
+        </div>
+        <div class="loan-side-final">
+          <div class="loan-values loan-values-final">
+            <div><span>Emprestado</span><strong>{{ fmt_money(loan.amount) }}</strong></div>
+            <div><span>Total contrato</span><strong>{{ fmt_money(snap.total_contract_amount) }}</strong></div>
+            <div><span>Vencimento</span><strong>{{ fmt_date(loan.due_date) }}</strong></div>
+            <div><span>Atualizado</span><strong>{{ fmt_money(snap.updated_amount) }}</strong></div>
+            <div><span>{% if loan.loan_type == 'diario' %}Parcela diária{% elif loan.loan_type == 'semanal' %}Parcela semanal{% else %}Parcela{% endif %}</span><strong>{{ fmt_money(snap.installment_amount) }}</strong></div>
+            <div><span>Parcelas pagas</span><strong>{{ snap.paid_installments }}/{{ snap.total_installments }}</strong></div>
+          </div>
+          <div class="loan-top-actions loan-top-actions-final">
+            <a class="btn btn-gray btn-sm" href="{{ url_for('loan_edit', loan_id=loan.id) }}">Editar</a>
+            {% if current_user.role=='admin' %}
+            <form method="post" action="{{ url_for('loan_delete', loan_id=loan.id) }}" onsubmit="return confirm('Excluir empréstimo?')"><input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+              <button class="btn btn-danger btn-sm doc-action-btn">Excluir</button>
+            </form>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      {% include '_loan_actions.html' %}
+    </div>
+  {% else %}
+    <p class="text-muted mb-0">Nenhum contrato.</p>
+  {% endfor %}
+  </div>
+</div>
+{% endblock %}

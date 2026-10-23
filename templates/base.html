@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script>
+    (function () {
+      var savedTheme = localStorage.getItem("theme");
+      if (savedTheme) {
+        document.documentElement.setAttribute("data-theme", savedTheme);
+      }
+    })();
+  </script>
+  <title>{{ tenant_display_name() }}</title>
+  <link rel="icon" type="image/png" href="{{ brand_favicon_url() }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="{{ url_for('static', filename='style.css') }}" rel="stylesheet">
+</head>
+<body>
+  {% if current_user.is_authenticated %}
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <div class="logo-card">
+        <img src="{{ brand_logo_url() }}" alt="{{ tenant_display_name() }}" class="brand-logo">
+      </div>
+      
+<nav class="nav flex-column gap-1 mt-3 sidebar-nav">
+  <a class="nav-link {% if request.endpoint=='dashboard' %}active{% endif %}" href="{{ url_for('dashboard') }}"><i class="bi bi-grid"></i> <span>{% if current_user.is_collector() %}Cobranças{% elif current_user.is_super_admin() %}Plataforma{% else %}Dashboard{% endif %}</span></a>
+
+  {% if current_user.is_super_admin() %}
+    <a class="nav-link {% if 'tenant' in (request.endpoint or '') %}active{% endif %}" href="{{ url_for('tenants_list') }}"><i class="bi bi-buildings"></i> <span>Assinaturas</span></a>
+    {% if session.get('active_tenant_id') %}
+    <a class="nav-link {% if 'client' in (request.endpoint or '') or 'loan' in (request.endpoint or '') or 'payment' in (request.endpoint or '') or request.endpoint in ['cashbox_view','expenses_list','collectors_admin','users_list','profile'] %}active{% endif %}" href="{{ url_for('clients_list') }}"><i class="bi bi-box-arrow-in-right"></i> <span>CRM selecionado</span></a>
+    <a class="nav-link" href="{{ url_for('tenant_switch_clear') }}"><i class="bi bi-x-circle"></i> <span>Sair do CRM</span></a>
+    {% endif %}
+  {% elif not current_user.is_collector() %}
+    <a class="nav-link {% if 'client' in (request.endpoint or '') %}active{% endif %}" href="{{ url_for('clients_list') }}"><i class="bi bi-people"></i> <span>Clientes</span></a>
+    <a class="nav-link {% if 'loan' in (request.endpoint or '') %}active{% endif %}" href="{{ url_for('loans_list') }}"><i class="bi bi-cash-stack"></i> <span>Empréstimos</span></a>
+    <a class="nav-link {% if 'payment' in (request.endpoint or '') %}active{% endif %}" href="{{ url_for('payments_list') }}"><i class="bi bi-wallet2"></i> <span>Pagamentos</span></a>
+    <a class="nav-link {% if request.endpoint=='cashbox_view' %}active{% endif %}" href="{{ url_for('cashbox_view') }}"><i class="bi bi-safe2"></i> <span>Caixa</span></a>
+    <a class="nav-link {% if 'expense' in (request.endpoint or '') %}active{% endif %}" href="{{ url_for('expenses_list') }}"><i class="bi bi-receipt-cutoff"></i> <span>Despesas</span></a>
+    <a class="nav-link {% if request.endpoint=='calculator_view' %}active{% endif %}" href="{{ url_for('calculator_view') }}"><i class="bi bi-calculator"></i> <span>Calculadora</span></a>
+    {% if current_user.role == 'admin' and not current_user.is_super_admin() %}
+    <a class="nav-link {% if 'user_' in (request.endpoint or '') or request.endpoint=='users_list' %}active{% endif %}" href="{{ url_for('users_list') }}"><i class="bi bi-person-gear"></i> <span>Usuários</span></a>
+    <a class="nav-link {% if request.endpoint=='collectors_admin' %}active{% endif %}" href="{{ url_for('collectors_admin') }}"><i class="bi bi-person-badge"></i> <span>Cobradores</span></a>
+    <a class="nav-link {% if 'backup' in (request.endpoint or '') %}active{% endif %}" href="{{ url_for('backups_list') }}"><i class="bi bi-hdd-stack"></i> <span>Backups</span></a>
+    {% endif %}
+    <a class="nav-link {% if request.endpoint=='profile' %}active{% endif %}" href="{{ url_for('profile') }}"><i class="bi bi-person-circle"></i> <span>Perfil</span></a>
+  {% endif %}
+</nav>
+
+      <div class="sidebar-bottom">
+        {% if current_tenant() %}<div class="small text-white-50 mb-2 px-2">Tenant: {{ current_tenant().display_name() }}</div>{% endif %}
+        {% if current_user.role == 'admin' %}
+        <form method="post" action="{{ url_for('backups_generate') }}" class="sidebar-inline-form"><input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="nav-action-button nav-action-backup"><i class="bi bi-cloud-arrow-up"></i> <span>Fazer backup agora</span></button>
+        </form>
+        {% endif %}
+        <a class="nav-link" href="{{ url_for('logout') }}"><i class="bi bi-box-arrow-right"></i> <span>Sair</span></a>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="btn btn-icon d-lg-none" id="menuToggle" type="button"><i class="bi bi-list"></i></button>
+          <div>
+            <h2 class="page-title">{% block page_title %}ControlCred{% endblock %}</h2>
+            <p class="page-subtitle">Gestão financeira e operacional</p>
+          </div>
+        </div>
+        <div class="topbar-right">
+          <button class="btn btn-icon theme-toggle" id="themeToggle" type="button" aria-label="Alternar tema" title="Alternar tema">
+            <i class="bi bi-moon-stars-fill"></i>
+          </button>
+        </div>
+      </header>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+      <div class="mb-3">
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }} alert-dismissible fade show shadow-sm" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% endwith %}
+
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+  {% else %}
+    {% block auth_content %}{% endblock %}
+  {% endif %}
+  <div class="route-chooser-backdrop" id="routeChooserBackdrop" hidden></div>
+  <div class="route-chooser-modal" id="routeChooserModal" hidden aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="routeChooserTitle">
+    <div class="route-chooser-card">
+      <div class="route-chooser-head">
+        <div>
+          <h5 id="routeChooserTitle">Escolher aplicativo de rota</h5>
+          <p class="mb-0" id="routeChooserText">Selecione onde abrir a navegação.</p>
+        </div>
+        <button type="button" class="btn btn-icon route-close-btn" id="routeChooserClose" aria-label="Fechar">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+      <div class="route-chooser-actions">
+        <button type="button" class="btn btn-primary route-app-btn" id="routeGoogleBtn">
+          <i class="bi bi-map"></i> Google Maps
+        </button>
+        <button type="button" class="btn btn-success route-app-btn" id="routeWazeBtn">
+          <i class="bi bi-sign-turn-right-fill"></i> Waze
+        </button>
+      </div>
+      <button type="button" class="btn btn-gray w-100 mt-2" id="routeChooserCancel">Cancelar</button>
+    </div>
+  </div>
+
+  <div class="modal fade" id="riskAlertModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content md-modal">
+        <div class="modal-header">
+          <h5 class="modal-title">Atenção</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body">
+          <p class="mb-2 fw-bold" id="riskAlertTitle">Cliente já possui vínculo com outro credor da rede.</p>
+          <div class="alert alert-warning border rounded-3 mb-0">
+            <div><strong>Valor ativo:</strong> <span id="riskAlertAmount">-</span></div>
+            <div><strong>Contratos ativos:</strong> <span id="riskAlertLoans">-</span></div>
+            <div><strong>Status:</strong> <span id="riskAlertStatus">-</span></div>
+          </div>
+          <p class="text-muted small mt-3 mb-0">Deseja continuar mesmo assim?</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-gray" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-primary" id="riskAlertContinue">Continuar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

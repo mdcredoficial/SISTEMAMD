@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% block page_title %}Assinaturas{% endblock %}
+{% block content %}
+<div class="panel-card">
+  <div class="panel-head"><h5>Empresas</h5><a class="btn btn-primary doc-action-btn" href="{{ url_for('tenant_new') }}">Nova empresa</a></div>
+  <div class="table-responsive">
+    <table class="table md-table align-middle mb-0">
+      <thead><tr><th>Empresa</th><th>Slug</th><th>Status</th><th>Acesso até</th><th>Ativo</th><th class="text-end">Ações</th></tr></thead>
+      <tbody>
+      {% for tenant in tenants %}
+        <tr>
+          <td>{{ tenant.company_name }}</td>
+          <td>{{ tenant.slug }}</td>
+          <td>{{ tenant.subscription_label() }}</td>
+          <td>{{ fmt_date(tenant.access_until()) }}</td>
+          <td>{{ 'Sim' if tenant.is_active else 'Não' }}</td>
+          <td class="text-end">
+            <div class="d-flex gap-2 justify-content-end flex-wrap">
+              <a class="btn btn-sm btn-primary" href="{{ url_for('tenant_switch', tenant_id=tenant.id) }}">Entrar no CRM</a>
+              <a class="btn btn-sm btn-gray" href="{{ url_for('tenant_edit', tenant_id=tenant.id) }}">Editar</a>
+              <form method="post" action="{{ url_for('tenant_toggle_block', tenant_id=tenant.id) }}" class="d-inline"><input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                {% if tenant.is_active %}
+                <input type="hidden" name="action" value="block">
+                <button class="btn btn-sm btn-warning" onclick="return confirm('Bloquear este cliente SaaS sem excluir os dados?')">Bloquear</button>
+                {% else %}
+                <input type="hidden" name="action" value="unblock">
+                <button class="btn btn-sm btn-success" onclick="return confirm('Reativar este cliente SaaS?')">Reativar</button>
+                {% endif %}
+              </form>
+              <form method="post" action="{{ url_for('tenant_delete', tenant_id=tenant.id) }}" class="d-inline" onsubmit="return confirm('Excluir este cliente SaaS em cascata? Todos os dados do CRM serão apagados.')"><input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="delete_mode" value="cascade">
+                <button class="btn btn-sm btn-danger">Excluir em cascata</button>
+              </form>
+            </div>
+            <div class="small text-muted mt-2">Opções: bloquear para manter histórico ou excluir em cascata para apagar o CRM.</div>
+          </td>
+        </tr>
+      {% else %}
+      <tr><td colspan="6" class="text-muted">Nenhum cliente cadastrado.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
