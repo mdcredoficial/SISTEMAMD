@@ -17,3 +17,8 @@ venv/
 build/
 dist/
 ACESSOS_TEMPORARIOS.txt
+**/.env
+**/.env.*
+**/ACESSOS_TEMPORARIOS.txt
+.vercel/**
+.git/**

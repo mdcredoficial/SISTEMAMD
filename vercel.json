@@ -1,9 +1,15 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "functions": {
-    "app.py": {
-      "includeFiles": "{templates/**,static/**,public/static/**,loan_rules.py}",
-      "excludeFiles": "{controlcred.db,mdcred.db,uploads/**,backups/**,tests/**,__pycache__/**,*.pyc}"
+    "api/index.py": {
+      "includeFiles": "{templates/**,static/**,public/static/**,loan_rules.py,storage.py}",
+      "excludeFiles": "{**/*.db,**/*.sqlite,**/*.sqlite3,uploads/**,backups/**,tests/**,__pycache__/**,*.pyc,build/**,dist/**,.env,.env.*,**/.env,**/.env.*,ACESSOS_TEMPORARIOS.txt,**/ACESSOS_TEMPORARIOS.txt,.vercel/**,.git/**}"
     }
-  }
+  },
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/api/index"
+    }
+  ]
 }
