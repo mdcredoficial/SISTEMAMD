@@ -1696,12 +1696,13 @@ def login():
 
 @app.route('/instalador', methods=['GET'])
 def desktop_installer():
-    response = redirect(
-        'https://github.com/mdcredoficial/SISTEMAMD/releases/latest/download/ControlCred-Setup-x64.exe',
-        code=302,
-    )
-    response.headers['Cache-Control'] = 'no-store'
-    return response
+    return render_template(
+        'installer.html',
+        download_url='https://github.com/mdcredoficial/SISTEMAMD/releases/latest/download/ControlCred-Setup-x64.exe',
+    ), 200, {
+        'Cache-Control': 'no-store',
+        'X-Robots-Tag': 'noindex',
+    }
 
 
 
