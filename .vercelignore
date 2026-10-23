@@ -16,3 +16,4 @@ venv/
 *.sqlite3
 build/
 dist/
+ACESSOS_TEMPORARIOS.txt
