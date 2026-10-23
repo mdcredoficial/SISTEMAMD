@@ -15,4 +15,6 @@ backups/
 .DS_Store
 build/
 dist/
+desktop/node_modules/
+desktop/dist/
 ACESSOS_TEMPORARIOS.txt

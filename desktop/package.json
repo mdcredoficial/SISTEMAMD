@@ -1,0 +1,43 @@
+{
+  "name": "controlcred-desktop",
+  "version": "1.0.0",
+  "description": "Aplicativo para Windows do ControlCred online",
+  "author": "ControlCred",
+  "private": true,
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist:win": "electron-builder --win nsis --x64"
+  },
+  "devDependencies": {
+    "electron": "45.0.0",
+    "electron-builder": "26.15.3"
+  },
+  "build": {
+    "appId": "br.com.controlcred.desktop",
+    "productName": "ControlCred",
+    "artifactName": "ControlCred-Setup-${version}-x64.${ext}",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "icon.ico",
+      "package.json"
+    ],
+    "win": {
+      "icon": "icon.ico",
+      "target": ["nsis"]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "ControlCred",
+      "deleteAppDataOnUninstall": false
+    }
+  }
+}
